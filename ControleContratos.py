@@ -95,51 +95,48 @@ if 'page' not in st.session_state:
 # ==========================================
 @st.cache_data
 def load_data():
-    # Agora estamos a dizer EXATAMENTE qual aba ler, e tiramos o header=1 porque você já limpou a planilha!
+    # Lê a aba correta
     df = pd.read_excel("CONTROLE_DE_CONTRATOS.xlsx", sheet_name="CONTROLE DE CONTRATOS")
     
-    # Limpa espaços invisíveis nos nomes das colunas que vêm do Excel
-    df.columns = [str(c).strip() for c in df.columns]
+    # 1. FAXINA NOS NOMES: Transforma tudo em maiúsculas, tira espaços e quebras de linha invisíveis
+    df.columns = [str(c).upper().strip().replace('\n', ' ') for c in df.columns]
     
-    # 1. Renomeia a coluna gigante de VALOR para o padrão do código
-    col_valor = "VALOR GLOBAL POR EMPRESA SEM OU COM SRP OU CAE OU CHA PUB"
-    if col_valor in df.columns:
-        df.rename(columns={col_valor: "VALOR CONTRATO"}, inplace=True)
-        
-    # 2. Renomeia a coluna gigante de MODALIDADE
-    col_modalidade = "MODALIDADE/EXCEÇÃO/PROCEDIMENTO ADM ESPECÍFICO"
-    if col_modalidade in df.columns:
-        df.rename(columns={col_modalidade: "MODALIDADE"}, inplace=True)
-        
-    # 3. Puxa a coluna PROCESSO para extrair o ano (Se não achar, usa o ano atual)
-    if "PROCESSO" in df.columns:
-        df.rename(columns={"PROCESSO": "DATA REF"}, inplace=True)
-    else:
-        df["DATA REF"] = str(datetime.now().year)
-        
-    # ==========================================
-    # Aplica as limpezas de Moeda e Ano para os gráficos funcionarem
-    # ==========================================
-    if 'VALOR CONTRATO' in df.columns:
-        df['VALOR_NUMERICO'] = df['VALOR CONTRATO'].apply(clean_currency)
-    else:
-        df['VALOR_NUMERICO'] = 0.0 # Evita que a tela quebre se não achar a coluna
-        
-    if 'DATA REF' in df.columns:
-        df['ANO_REF'] = df['DATA REF'].apply(extract_year)
-        # Se a linha vier vazia, preenche com o ano atual
-        df['ANO_REF'] = df['ANO_REF'].fillna(datetime.now().year)
-        
-    # Tratamento para não quebrar o gráfico de pizza com células vazias
-    if 'MODALIDADE' in df.columns:
-        df['MODALIDADE'] = df['MODALIDADE'].fillna("NÃO INFORMADA")
-    else:
+    # 2. CAÇADOR DE COLUNAS INTELIGENTE
+    for col in df.columns:
+        # Procura a coluna de Valor
+        if "VALOR GLOBAL" in col or "VALOR" in col:
+            if "VALOR CONTRATO" not in df.columns: # Evita sobrescrever se já achou
+                df.rename(columns={col: "VALOR CONTRATO"}, inplace=True)
+                
+        # Procura a coluna de Modalidade
+        elif "MODALIDADE" in col:
+            df.rename(columns={col: "MODALIDADE"}, inplace=True)
+            
+        # Procura a coluna de Processo/Data
+        elif "PROCESSO" in col or "DATA" in col:
+            df.rename(columns={col: "DATA REF"}, inplace=True)
+            
+        # Procura a coluna de Empresa
+        elif "EMPRESA" in col or "CONTRATADA" in col:
+            if "NOME DA EMPRESA" not in df.columns:
+                df.rename(columns={col: "NOME DA EMPRESA"}, inplace=True)
+
+    # 3. BLINDAGEM ANTI-ERRO (Se mesmo assim não achar, cria colunas vazias para não quebrar o site)
+    if 'VALOR CONTRATO' not in df.columns:
+        df['VALOR CONTRATO'] = "0"
+    if 'MODALIDADE' not in df.columns:
         df['MODALIDADE'] = "NÃO INFORMADA"
-        
-    if 'NOME DA EMPRESA' in df.columns:
-        df['NOME DA EMPRESA'] = df['NOME DA EMPRESA'].fillna("NÃO INFORMADA")
-    else:
+    if 'DATA REF' not in df.columns:
+        df['DATA REF'] = str(datetime.now().year)
+    if 'NOME DA EMPRESA' not in df.columns:
         df['NOME DA EMPRESA'] = "NÃO INFORMADA"
+
+    # 4. APLICA AS LIMPEZAS FINAIS (Moeda e Ano)
+    df['VALOR_NUMERICO'] = df['VALOR CONTRATO'].apply(clean_currency)
+    df['ANO_REF'] = df['DATA REF'].apply(extract_year).fillna(datetime.now().year)
+    
+    df['MODALIDADE'] = df['MODALIDADE'].fillna("NÃO INFORMADA")
+    df['NOME DA EMPRESA'] = df['NOME DA EMPRESA'].fillna("NÃO INFORMADA")
 
     return df
 
