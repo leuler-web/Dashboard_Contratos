@@ -91,19 +91,20 @@ if 'page' not in st.session_state:
     st.session_state.page = "Capa"
 
 # ==========================================
-# 5. CARREGAMENTO DOS DADOS (Exemplo)
+# 5. CARREGAMENTO DOS DADOS (Base Excel Real)
 # ==========================================
 @st.cache_data
 def load_data():
-    data = {
-        "NOME DA EMPRESA": ["M. N. LEITE", "VECTORE CONSULTORIA", "URUS LTDA", "LB CENTAURO"],
-        "MODALIDADE": ["INEXIGIBILIDADE", "INEXIGIBILIDADE", "DISPENSA", "PREGÃO ELETRÔNICO"],
-        "VALOR CONTRATO": ["R$ 150.000,50", "R$ 2.300.000,00", "R$ 45.000,00", "R$ 80.500,25"],
-        "DATA REF": ["15/02/2025", "20/03/2026", "10/01/2026", "05/05/2025"]
-    }
-    df = pd.DataFrame(data)
-    df['VALOR_NUMERICO'] = df['VALOR CONTRATO'].apply(clean_currency)
-    df['ANO_REF'] = df['DATA REF'].apply(extract_year)
+    # Lê a sua planilha Excel real
+    df = pd.read_excel("CONTROLE_DE_CONTRATOS.xlsx")
+    
+    # IMPORTANTE: Se as colunas na sua planilha tiverem nomes diferentes 
+    # (ex: "Valor Total" em vez de "VALOR CONTRATO"), altere os nomes abaixo para ficarem iguais!
+    if 'VALOR CONTRATO' in df.columns:
+        df['VALOR_NUMERICO'] = df['VALOR CONTRATO'].apply(clean_currency)
+    if 'DATA REF' in df.columns:
+        df['ANO_REF'] = df['DATA REF'].apply(extract_year)
+        
     return df
 
 df = load_data()
