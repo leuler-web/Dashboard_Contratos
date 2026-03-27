@@ -95,8 +95,8 @@ if 'page' not in st.session_state:
 # ==========================================
 @st.cache_data
 def load_data():
-    # O "header=1" diz para o Python ignorar o título geral e ler o cabeçalho na 2ª linha!
-    df = pd.read_excel("CONTROLE_DE_CONTRATOS.xlsx", header=1)
+    # Agora estamos a dizer EXATAMENTE qual aba ler, e tiramos o header=1 porque você já limpou a planilha!
+    df = pd.read_excel("CONTROLE_DE_CONTRATOS.xlsx", sheet_name="CONTROLE DE CONTRATOS")
     
     # Limpa espaços invisíveis nos nomes das colunas que vêm do Excel
     df.columns = [str(c).strip() for c in df.columns]
