@@ -95,16 +95,52 @@ if 'page' not in st.session_state:
 # ==========================================
 @st.cache_data
 def load_data():
-    # Lê a sua planilha Excel real
-    df = pd.read_excel("CONTROLE_DE_CONTRATOS.xlsx")
+    # O "header=1" diz para o Python ignorar o título geral e ler o cabeçalho na 2ª linha!
+    df = pd.read_excel("CONTROLE_DE_CONTRATOS.xlsx", header=1)
     
-    # IMPORTANTE: Se as colunas na sua planilha tiverem nomes diferentes 
-    # (ex: "Valor Total" em vez de "VALOR CONTRATO"), altere os nomes abaixo para ficarem iguais!
+    # Limpa espaços invisíveis nos nomes das colunas que vêm do Excel
+    df.columns = [str(c).strip() for c in df.columns]
+    
+    # 1. Renomeia a coluna gigante de VALOR para o padrão do código
+    col_valor = "VALOR GLOBAL POR EMPRESA SEM OU COM SRP OU CAE OU CHA PUB"
+    if col_valor in df.columns:
+        df.rename(columns={col_valor: "VALOR CONTRATO"}, inplace=True)
+        
+    # 2. Renomeia a coluna gigante de MODALIDADE
+    col_modalidade = "MODALIDADE/EXCEÇÃO/PROCEDIMENTO ADM ESPECÍFICO"
+    if col_modalidade in df.columns:
+        df.rename(columns={col_modalidade: "MODALIDADE"}, inplace=True)
+        
+    # 3. Puxa a coluna PROCESSO para extrair o ano (Se não achar, usa o ano atual)
+    if "PROCESSO" in df.columns:
+        df.rename(columns={"PROCESSO": "DATA REF"}, inplace=True)
+    else:
+        df["DATA REF"] = str(datetime.now().year)
+        
+    # ==========================================
+    # Aplica as limpezas de Moeda e Ano para os gráficos funcionarem
+    # ==========================================
     if 'VALOR CONTRATO' in df.columns:
         df['VALOR_NUMERICO'] = df['VALOR CONTRATO'].apply(clean_currency)
+    else:
+        df['VALOR_NUMERICO'] = 0.0 # Evita que a tela quebre se não achar a coluna
+        
     if 'DATA REF' in df.columns:
         df['ANO_REF'] = df['DATA REF'].apply(extract_year)
+        # Se a linha vier vazia, preenche com o ano atual
+        df['ANO_REF'] = df['ANO_REF'].fillna(datetime.now().year)
         
+    # Tratamento para não quebrar o gráfico de pizza com células vazias
+    if 'MODALIDADE' in df.columns:
+        df['MODALIDADE'] = df['MODALIDADE'].fillna("NÃO INFORMADA")
+    else:
+        df['MODALIDADE'] = "NÃO INFORMADA"
+        
+    if 'NOME DA EMPRESA' in df.columns:
+        df['NOME DA EMPRESA'] = df['NOME DA EMPRESA'].fillna("NÃO INFORMADA")
+    else:
+        df['NOME DA EMPRESA'] = "NÃO INFORMADA"
+
     return df
 
 df = load_data()
